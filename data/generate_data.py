@@ -19,7 +19,7 @@ def write_seq(User, dataset_name):
         f.write('\n')
             
 def get_items_meta(meta_path, categories_used='all'):
-    item2price = {}
+    # item2price = {}
     item2category = {}
     item2brand = {}
 
@@ -28,17 +28,17 @@ def get_items_meta(meta_path, categories_used='all'):
 
             asin = l['asin']
             item2category[asin] = l['category']
-            item2price[asin] = l['price'][1:] if 'price' in l else 0.0
+            # item2price[asin] = l['price'][1:] if 'price' in l else 0.0
             item2brand[asin] = l['brand'] if 'brand' in l else ''
     else:
         for l in parse(meta_path):
             asin = l['asin']
             item2category[asin] = l['category'][0] if l['category'] else ''  # 첫 번째 카테고리만 사용
-            item2price[asin] = l['price'][1:] if 'price' in l else 0.0
+            # item2price[asin] = l['price'][1:] if 'price' in l else 0.0
             item2brand[asin] = l['brand'] if 'brand' in l else ''
 
     items_meta = {
-        'item2price': item2price,
+        # 'item2price': item2price,
         'item2category': item2category,
         'item2brand': item2brand
     }
@@ -71,7 +71,7 @@ def generate_data(dataset_name, reviews_path, meta_path):
             user2id = {'[PAD]': 0}
             item2id = {'[PAD]': 0}
             items_map = {
-                'item2price': {},
+                # 'item2price': {},
                 'item2category': {},
                 'item2brand': {}
             }
@@ -96,7 +96,7 @@ def generate_data(dataset_name, reviews_path, meta_path):
             
             items_meta_itemid_list=[]
             not_match_item_id=[]
-            items_meta_itemid_list=set(list(items_meta['item2price'].keys())) # meta data itemid
+            items_meta_itemid_list=set(list(items_meta['item2brand'].keys())) # meta data itemid
             
             for item in item2_id_list:
                 if item not in items_meta_itemid_list:
@@ -117,7 +117,7 @@ def generate_data(dataset_name, reviews_path, meta_path):
             for u in user_reviews:
                 user_reviews[u].sort(key=lambda x: x[1])
                 for item, time in user_reviews[u]:
-                    for s in ['item2price','item2category', 'item2brand']:
+                    for s in ['item2category', 'item2brand']:  # item2price remove
                         if item in items_meta[s] and item not in not_match_item_id:
                             items_map[s][item] = items_meta[s][item]  # item_map=41280
             ### 
@@ -154,10 +154,11 @@ def generate_data(dataset_name, reviews_path, meta_path):
                     categories_n_max = len(item2category_id[k]) if len(
                         item2category_id[k]) > categories_n_max else categories_n_max
 
-            item_features = {0: [0] * (1 + categories_n_max + 1)}
+            # item_features = {0: [0] * (1 + categories_n_max + 1)}
+            item_features = {0: [0] * (categories_n_max + 1)}
             for k in items_map['item2brand'].keys():
                 category_feature = item2category_id[k] + (categories_n_max - len(item2category_id[k])) * [0]
-                item_feature = [items_map['item2price'][k]] + category_feature + [item2brand_id[k]]
+                item_feature = category_feature + [item2brand_id[k]] #[items_map['item2price'][k]]+category_feature + [item2brand_id[k]]
                 assert len(item_feature) == len(item_features[0])
                 item_features[item2id[k]] = item_feature
 
@@ -184,7 +185,6 @@ def generate_data(dataset_name, reviews_path, meta_path):
             #item period extract
 
             item_period = calculate_purchase_intervals(User)
-
 
             data = {
                 'user_seq': user_reviews,
