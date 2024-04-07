@@ -7,13 +7,14 @@ from models import DLFSRecModel
 from trainers import DLFSRecTrainer
 from utils import EarlyStopping, check_path, set_seed, get_local_time, get_dataloader, get_rating_matrix, get_data_dic, \
     get_feats_vec
+import time 
 # import IPython; IPython.embed(colors="Linux"); exit(1)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", default="./data/Beauty/", type=str)
-    parser.add_argument("--data_name", default="Beauty", type=str)
+    parser.add_argument("--data_dir", default="./data/Grocery_and_Gourmet_Food/", type=str)
+    parser.add_argument("--data_name", default="Grocery_and_Gourmet_Food", type=str)
     parser.add_argument("--output_dir", default="outputs/", type=str)
     parser.add_argument("--do_eval", action="store_true")
     parser.add_argument("--load_model", default=None, type=str)
@@ -33,8 +34,8 @@ def main():
     parser.add_argument("--lr", default=0.0001, type=float, help="learning rate of adam")
     parser.add_argument("--train_batch_size", default=256, type=int, help="number of train batch_size")
     parser.add_argument("--eval_batch_size", default=512, type=int, help="number of eval batch_size")
-    parser.add_argument("--epochs", default=200, type=int, help="number of epochs")
-    parser.add_argument("--no_cuda", action="store_true")
+    parser.add_argument("--epochs", default=300, type=int, help="number of epochs")
+    parser.add_argument("--no_cuda", action="store_true",default=False)  # CPU 사용 여부를 결정하는 옵션
     parser.add_argument("--log_freq", default=1, type=int, help="per epoch print res")
     parser.add_argument("--full_sort", action="store_true")
     parser.add_argument("--patience", default=10, type=int,
@@ -48,28 +49,36 @@ def main():
     parser.add_argument('--pvn_weight', default=0.005, type=float)
     parser.add_argument("--fusion_type", default="add", type=str)
     parser.add_argument("--side_info_fused", action="store_false", help="frlp")
+    parser.add_argument("--period_add_like_cxt", default=False, type=bool, help="period information add in side-information like context information")
+    parser.add_argument("--period_add_like_attrs", default=False, type=bool, help="period information add in side-information like attributes information")
+
+    
     args = parser.parse_args()
     print(args)
 
     # environment setting
     set_seed(args.seed)
     check_path(args.output_dir)
-    os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
-    args.cuda_condition = torch.cuda.is_available() and not args.no_cuda
+    
+    if not args.no_cuda:  # CUDA를 사용하지 않는 경우에만 환경 설정
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu_id
+    
+    args.cuda_condition = torch.cuda.is_available() 
     #  log file
     cur_time = get_local_time()
     args_str = f'{args.model_name}-{args.data_name}-{cur_time}'
     args.log_file = os.path.join(args.output_dir, args_str + '.txt')
     with open(args.log_file, 'a') as f:
         f.write(str(args) + '\n')
-    # import IPython; IPython.embed(colors="Linux"); exit(1)
 
     data_dic = get_data_dic(args)
-    import IPython; IPython.embed(colors="Linux"); exit(1)  
 
     args.item_size = data_dic['n_items']  # 0 ~ max_item
     args.feature_size = data_dic['feature_size']
+
+
     args.items_feature = get_feats_vec(data_dic['items_feat'], data_dic)
+
     if args.cuda_condition:
         args.items_feature = args.items_feature.cuda()
 
@@ -91,6 +100,7 @@ def main():
             print(f"Load model from {args.checkpoint_path} for test!")
             scores, result_info = trainer.test(0, full_sort=args.full_sort)
     else:
+        start_time = time.time()
         # save model path
         args.checkpoint_path = os.path.join(args.output_dir, args_str + '.pt')
         early_stopping = EarlyStopping(args.checkpoint_path, patience=args.patience,
@@ -103,6 +113,13 @@ def main():
                 print("Early stopping")
                 break
 
+        end_time = time.time()
+        execution_time = end_time - start_time
+
+        hours = int(execution_time // 3600)
+        minutes = int((execution_time % 3600) // 60)
+        seconds = int(execution_time % 60)
+
         print("---------------Sample 99 results---------------")
         trainer.model.load_state_dict(torch.load(args.checkpoint_path))
         scores, result_info = trainer.test(0, full_sort=args.full_sort)
@@ -110,6 +127,9 @@ def main():
     with open(args.log_file, 'a') as f:
         f.write(args_str + '\n')
         f.write(result_info + '\n')
+        f.write(f"To run Epoch:{args.epochs} , It took {hours} hours, {minutes} minutes, {seconds} seconds\n")
 
+
+# python main.py --model_name="baseline" --epochs=500 --patience=40 --fusion_type="concat"
 
 main()

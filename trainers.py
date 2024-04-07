@@ -4,6 +4,9 @@ import tqdm
 from torch.optim import Adam
 
 from utils import get_metric, recall_at_k, ndcg_k
+import os
+os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def wasserstein_distance(mean1, cov1, mean2, cov2):
@@ -86,6 +89,9 @@ class Trainer:
             "MRR": '{:.4f}'.format(MRR),
         }
         print(post_fix)
+
+        if (epoch + 1) % self.args.log_freq == 0:
+                print(str(post_fix))
         with open(self.args.log_file, 'a') as f:
             f.write(str(post_fix) + '\n')
         return [HIT_1, NDCG_1, HIT_5, NDCG_5, HIT_10, NDCG_10, MRR], str(post_fix)
@@ -196,7 +202,8 @@ class DLFSRecTrainer(Trainer):
         return [recall[0], ndcg[0], recall[1], ndcg[1], recall[3], ndcg[3]], str(post_fix)
 
     def bpr_optimization(self, seq_mean_out, seq_cov_out, pos_ids, pos_cxt, neg_ids, neg_cxt):
-
+        # loss, batch_auc, pvn_loss = self.bpr_optimization(sequence_mean_output, sequence_cov_output, answers_id,answers_cxt, negs_id,negs_cxt)
+        # seq_mean_out, seq_cov_out: [256,50,128], pos_ids, neg_ids:[256],pos_cxt,neg_cxt:[256,6]
         pos_mean_emb = self.model.item_mean_embeddings(pos_ids)
         pos_cov_emb = self.model.item_cov_embeddings(pos_ids)
         neg_mean_emb = self.model.item_mean_embeddings(neg_ids)
@@ -294,6 +301,7 @@ class DLFSRecTrainer(Trainer):
                                   desc="Recommendation EP_%s:%d" % (str_code, epoch),
                                   total=len(dataloader),
                                   bar_format="{l_bar}{r_bar}")
+
         if train:
             self.model.train()
 
@@ -306,15 +314,16 @@ class DLFSRecTrainer(Trainer):
                 batch = tuple(items[k].to(self.device) for items in batch for k in items)
                 _, inputs_id, inputs_cxt, answers_id, answers_cxt, negs_id, negs_cxt = batch
                 sequence_mean_output, sequence_cov_output = self.model(inputs_id, inputs_cxt)
-                loss, batch_auc, pvn_loss = self.bpr_optimization(sequence_mean_output, sequence_cov_output, answers_id,
-                                                                  answers_cxt, negs_id,
-                                                                  negs_cxt)
+
+                loss, batch_auc, pvn_loss = self.bpr_optimization(sequence_mean_output, sequence_cov_output, answers_id,answers_cxt, negs_id,negs_cxt)# torch.Size([256, 50, 128])
+
                 loss += pvn_loss
                 self.optim.zero_grad()
                 loss.backward()
                 self.optim.step()
 
                 rec_avg_loss += loss.item() * len(answers_id)
+                
                 rec_cur_loss = loss.item()
                 rec_avg_auc += batch_auc.item() * len(answers_id)
                 rec_avg_pvn_loss += pvn_loss.item() * len(answers_id)
@@ -398,4 +407,5 @@ class DLFSRecTrainer(Trainer):
                             pred_list = test_logits
                         else:
                             pred_list = np.append(pred_list, test_logits, axis=0)
+
                 return self.get_sample_scores(epoch, pred_list)

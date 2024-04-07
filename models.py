@@ -25,7 +25,7 @@ class DLFSRecModel(nn.Module):
         self.cov_layer_norm = LayerNorm(args.hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(args.hidden_dropout_prob)
         self.item_encoder = Encoder(args)
-        self.elu = torch.nn.ELU()
+        self.elu = torch.nn.ELU() 
 
         self.apply(self.init_weights)
 

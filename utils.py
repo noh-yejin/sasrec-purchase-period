@@ -3,6 +3,7 @@ import math
 import os
 import pickle as pkl
 import random
+import pandas as pd
 
 import numpy as np
 import torch
@@ -263,10 +264,9 @@ def get_user_sample(sample_file):
     return sample_seq
 
 
-def get_data_dic(args): # period add
+def get_data_dic(args): 
     dat = pkl.load(open(f'{args.data_dir}{args.data_name}_all_multi_word.dat', 'rb'))
     data = {}
-    import IPython; IPython.embed(colors="Linux"); exit(1)  
 
     user_reviews = dat['user_seq_token']
     data['user_seq_wt'] = []
@@ -284,11 +284,51 @@ def get_data_dic(args): # period add
     data['n_brands'] = len(dat['brand2id'])
     data['feature_size'] = 6 + 1 + data['n_categories'] + data['n_brands'] - 2
     data['sample_seq'] = get_user_sample(args.data_dir + args.data_name + '_sample.txt')
-    data['user_seq_period']=dat['item_period']
+
+    if args.period_add_like_cxt == True:
+        data['user_seq_period']=dat['item_period'] # period add 
+    # if args.period_sideinfo_like_attrs==True:
+        #item feature add period
+
     return data
+# import IPython; IPython.embed(colors="Linux"); exit(1)
+
+
+# item period matching on user_seq_wt
+# make dataframe
+def create_dataframe_from_dict(data_dict):
+    data_list = []
+
+    for userid, info in data_dict.items():
+        for line in info:
+            itemid = line[0]
+            period = line[1]
+            
+        row_data = [userid, itemid, period]
+        
+        data_list.append(row_data)
+
+    df = pd.DataFrame(data_list, columns=['userid', 'itemid', 'period'])
+    
+    return df
+
 
 
 def get_dataloader(args, seq_dic):
+
+    if args.period_add_like_cxt==True: # user:[itemid,[context],period]
+        train_dataset = DLFSRecDataset(args, seq_dic['user_seq_period'], data_type='train')
+        train_sampler = RandomSampler(train_dataset)
+        train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+
+        eval_dataset = DLFSRecDataset(args, seq_dic['user_seq_period'], test_neg_items=seq_dic['sample_seq'], data_type='valid')
+        eval_sampler = SequentialSampler(eval_dataset)
+        eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
+
+        test_dataset = DLFSRecDataset(args, seq_dic['user_seq_period'], test_neg_items=seq_dic['sample_seq'], data_type='test')
+        test_sampler = SequentialSampler(test_dataset)
+        test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=args.eval_batch_size)
+
     train_dataset = DLFSRecDataset(args, seq_dic['user_seq_wt'], data_type='train')
     train_sampler = RandomSampler(train_dataset)
     train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
@@ -305,7 +345,9 @@ def get_dataloader(args, seq_dic):
 
 
 def get_feats_vec(feats, args):
-    feats = torch.tensor(feats)
+
+    #check feats 
+    feats= torch.tensor(feats)
     feat_category = torch.zeros(feats.size(0), args['n_categories'])
     category_vec = feat_category.scatter_(index=feats[:, 1:-1].long(), value=1, dim=-1)
     feat_brand = torch.zeros(feats.size(0), args['n_brands'])
