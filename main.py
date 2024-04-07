@@ -131,5 +131,6 @@ def main():
 
 
 # python main.py --model_name="baseline" --epochs=500 --patience=40 --fusion_type="concat"
+# python main.py --model_name="add period" --epochs=500 --patience=40 --fusion_type="concat" --period_add_like_cxt=True
 
 main()

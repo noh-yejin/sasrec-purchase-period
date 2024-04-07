@@ -287,8 +287,7 @@ def get_data_dic(args):
 
     if args.period_add_like_cxt == True:
         data['user_seq_period']=dat['item_period'] # period add 
-    # if args.period_sideinfo_like_attrs==True:
-        #item feature add period
+
 
     return data
 # import IPython; IPython.embed(colors="Linux"); exit(1)
@@ -328,18 +327,19 @@ def get_dataloader(args, seq_dic):
         test_dataset = DLFSRecDataset(args, seq_dic['user_seq_period'], test_neg_items=seq_dic['sample_seq'], data_type='test')
         test_sampler = SequentialSampler(test_dataset)
         test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=args.eval_batch_size)
+    else: 
 
-    train_dataset = DLFSRecDataset(args, seq_dic['user_seq_wt'], data_type='train')
-    train_sampler = RandomSampler(train_dataset)
-    train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
+        train_dataset = DLFSRecDataset(args, seq_dic['user_seq_wt'], data_type='train')
+        train_sampler = RandomSampler(train_dataset)
+        train_dataloader = DataLoader(train_dataset, sampler=train_sampler, batch_size=args.train_batch_size)
 
-    eval_dataset = DLFSRecDataset(args, seq_dic['user_seq_wt'], test_neg_items=seq_dic['sample_seq'], data_type='valid')
-    eval_sampler = SequentialSampler(eval_dataset)
-    eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
+        eval_dataset = DLFSRecDataset(args, seq_dic['user_seq_wt'], test_neg_items=seq_dic['sample_seq'], data_type='valid')
+        eval_sampler = SequentialSampler(eval_dataset)
+        eval_dataloader = DataLoader(eval_dataset, sampler=eval_sampler, batch_size=args.eval_batch_size)
 
-    test_dataset = DLFSRecDataset(args, seq_dic['user_seq_wt'], test_neg_items=seq_dic['sample_seq'], data_type='test')
-    test_sampler = SequentialSampler(test_dataset)
-    test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=args.eval_batch_size)
+        test_dataset = DLFSRecDataset(args, seq_dic['user_seq_wt'], test_neg_items=seq_dic['sample_seq'], data_type='test')
+        test_sampler = SequentialSampler(test_dataset)
+        test_dataloader = DataLoader(test_dataset, sampler=test_sampler, batch_size=args.eval_batch_size)
 
     return train_dataloader, eval_dataloader, test_dataloader
 
