@@ -1,5 +1,7 @@
 import numpy as np
 from collections import defaultdict
+import gzip
+import json
 
 np.random.seed(12345)
 
@@ -12,10 +14,10 @@ def sample_test_data(data_name, test_num=99, sample_type='random'):
     """
 
     data_file = f'./{data_name}/{data_name}.txt'
-    test_file = f'{data_name}_sample.txt'
-
+    test_file = f'./{data_name}/{data_name}_sample.txt' 
     item_count = defaultdict(int)
     user_items = defaultdict()
+
 
     lines = open(data_file).readlines()
     for line in lines:
@@ -51,6 +53,6 @@ def sample_test_data(data_name, test_num=99, sample_type='random'):
 
 
 if __name__ == '__main__':
-    data_names = ['Beauty', 'Sports_and_Outdoors', 'Toys_and_Games', 'Home_and_Kitchen']
+    data_names = ['Grocery_and_Gourmet_Food']
     for data_name in data_names:
         sample_test_data(data_name)
